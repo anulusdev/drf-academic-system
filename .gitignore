@@ -1,0 +1,36 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# --- Security (CRITICAL for Djoser & Postgres) ---
+.env
+.env.local
+secrets.json
+
+# --- Python & Pipenv ---
+# Ignore the actual virtual environment directory
+.venv/
+venv/
+ENV/
+# Keep Pipfile and Pipfile.lock tracked! Do NOT ignore them.
+
+# --- Django Core ---
+*.pyc
+__pycache__/
+*.log
+db.sqlite3
+db.sqlite3-journal
+
+# --- Static & Media Files ---
+# These are generated/uploaded files, not source code
+media/
+staticfiles/
+static_cdn/
+
+# --- IDEs & System ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- Testing/Coverage (Optional) ---
+.coverage
+htmlcov/
