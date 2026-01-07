@@ -29,25 +29,37 @@ Edusystem solves these problems by providing:
 
 ---
 
-## 🏗 System Architecture
+## ⚙️ Implementation & Architecture Decisions
 
-The codebase is structured to ensure long-term maintainability and security.
+This project follows a **Domain-Driven Design (DDD)** approach to ensure scalability and maintainability. Below are the key architectural decisions:
 
-### 1. Domain-Driven Design
-* **`academics` App:** Handles the core business logic (Departments, Courses, Enrollments, Sessions).
-* **`account` App:** Manages authentication and user profiles (Student vs. Lecturer).
-* **Separation of Concerns:** Authentication logic (`CustomUser`) is strictly separated from academic profiles (`StudentProfile`, `LecturerProfile`). This allows for flexible role assignment without bloating the auth system.
+### 1. Decoupled Authentication & Profiling (Separation of Concerns)
+Instead of overloading the default Django `User` model, we strictly separate **Authentication** from **Domain Logic**.
+* **`CustomUser` (Auth):** Handles only login credentials (email, password, staff status).
+* **`StudentProfile` / `LecturerProfile` (Domain):** Stores academic data (Department, Level, Faculty ID).
+* **Why?** This prevents "God Models" and allows a single user to theoretically hold multiple roles (e.g., a Staff member who is also a Student) without schema conflicts.
 
-### 2. Explicit Enrollment Modeling
-We utilize an explicit **Enrollment** model rather than a simple Many-to-Many relationship. This decision allows the institution to track:
-* When a student registered for a course.
-* The specific academic session the course was taken.
-* The status of the enrollment (e.g., registered, approved, carry-over).
+### 2. Explicit Junction Tables (The Enrollment Model)
+We intentionally avoided Django's standard Many-to-Many field for Course Registration. Instead, we utilized an explicit **`Enrollment`** model.
+* **Why?** A simple M2M link cannot store critical metadata such as:
+    * *When* the student registered.
+    * *Which* Academic Session the course belongs to (e.g., 2023 vs 2024).
+    * *Status* of the course (Registered, Approved, Failed, Passed).
 
-### 3. Role-Based Access Control (RBAC)
-Security is baked into the architecture using a two-layer approach:
-1.  **Queryset Scoping:** Users can only query data relevant to them (e.g., a Student can only see their own results; a Lecturer sees only their students).
-2.  **Permission Policies:** Strict rules (e.g., `IsHodOrReadOnly`, `IsOwnerOrReadOnly`) prevent unauthorized modifications.
+### 3. Session-Scoped Data Architecture
+To solve the problem of historical data integrity, the system relies on an **`AcademicSession`** model.
+* **Design:** All enrollment and academic records are tied to a specific session.
+* **Benefit:** This allows the system to remain "active" for the current year while preserving immutable records of previous years, preventing data loss during year transitions.
+
+### 4. Two-Layer Security Implementation (RBAC)
+Security is enforced at both the Database and Application levels:
+* **Layer 1: Queryset Scoping:** Overridden `get_queryset()` methods ensure that users never fetch data outside their permission scope (e.g., A student querying `/results/` receives only *their* results—filtering happens at the SQL level).
+* **Layer 2: Object Permissions:** Custom permission classes (e.g., `IsHodOrReadOnly`, `IsOwner`) act as a final gatekeeper to prevent unauthorized modifications.
+
+### Database Schema
+Below is the architectural overview of the database relationships:
+
+![Alt text](https://github.com/anulusdev/drf-academic-system/blob/a14cf8028fff31bb7cc3643dadd81fc74255bc59/DB%20schema%20file.png)
 
 ---
 
