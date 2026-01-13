@@ -7,10 +7,12 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
-from .models import *
-from .permissions import *
-from .serializers import *
-
+from .models import Course, Department, Enrollment
+from .permissions import IsAdminOrReadOnly, IsHodOrReadOnly, IsStudent
+from .serializers import (
+    CourseSerializer, CourseCreateSerializer, 
+    DepartmentSerializer, DepartmentCreateSerializer
+)
 
 class CourseViewSet(ModelViewSet):
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
@@ -113,13 +115,3 @@ class DepartmentViewSet(ModelViewSet):
         if user.is_authenticated and user.role == 'Lecturer':
             return [IsHodOrReadOnly()]
         return [IsAdminOrReadOnly()]
-
-
-# class CourseAllocation(APIView):
-#     def allocate(self):
-#         user = self.request.user
-#         courses = Course.object.filter(department=user.department)
-#
-#         if user.role == "lecturerprofile":
-#             lecturer = user.lecturerprofile
-#             course

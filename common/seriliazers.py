@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from academics.models import *
-from account.models import *
+from academics.models import Course, Department
+from account.models import LecturerProfile
 
 
 class SimpleCourse(serializers.ModelSerializer):
