@@ -4,7 +4,7 @@ from djoser.serializers import (
     UserCreateSerializer as BaseUserCreateSerializer
 )
 from rest_framework import serializers
-from .models import *
+from .models import CustomUser, StudentProfile, LecturerProfile
 
 
 class UserCreateSerializer(BaseUserCreateSerializer):
