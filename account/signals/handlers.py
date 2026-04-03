@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import transaction
 from django.dispatch import receiver
-from django.db.models.signals import post_save
+from django.db.models.signals import pre_save, post_save
 from account.models import LecturerProfile, StudentProfile
 
 @receiver(pre_save, sender=settings.AUTH_USER_MODEL)
