@@ -5,9 +5,9 @@ from account.models import LecturerProfile, StudentProfile
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_profile_for_new_user(created, instance, **kwargs):
+def create_profile_for_new_user(sender, created, instance, **kwargs):
     if created:
-        if instance.role == 'Student':
-            StudentProfile.objects.create(user=instance)
-        if instance.role == 'Lecturer':
-            LecturerProfile.objects.create(user=instance)
+        if instance.is_student:
+            StudentProfile.objects.get_or_create(user=instance)
+        if instance.is_lecturer:
+            LecturerProfile.objects.get_or_create(user=instance)

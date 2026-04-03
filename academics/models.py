@@ -40,23 +40,34 @@ class Course(models.Model):
 
 
 class Enrollment(models.Model):
-    # STATUS_CHOICES = (
-    #     ('Pending', 'PENDING'),
-    #     ('Approved', 'APPROVED'),
-    #     ('Rejected', 'REJECTED')
-    # )
+    STATUS_CHOICES = (
+        ('Pending', 'PENDING'),
+        ('Approved', 'APPROVED'),
+        ('Rejected', 'REJECTED')
+    )
 
     student = models.ForeignKey(
         'account.StudentProfile', on_delete=models.CASCADE,
-        related_name='enrollments'
+        related_name='enrollments', 
     )
     course = models.ForeignKey(
         Course, on_delete=models.CASCADE,
         related_name='enrollments'
     )
-    # status = models.CharField(max_length=10, chioces=STATUS_CHOICES, default='Pending')
-    # approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    approved_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=10, 
+        choices=STATUS_CHOICES, 
+        default='Pending'
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True
+    )
+    approved_at = models.DateTimeField(
+        auto_now_add=True, 
+        help_text = 'when the course was approved'
+    )
 
     class Meta:
         constraints = [

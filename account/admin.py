@@ -15,6 +15,7 @@ class AdminUser(UserAdmin):
             },
         ),
     )
+    list_editable = ["role"]
     list_display = ('id', "username", "email", "first_name", "last_name", "is_staff", "role")
     list_filter = ("is_staff", "is_superuser", "is_active", "role", "groups")
 
@@ -32,10 +33,10 @@ class LecturerAdmin(admin.ModelAdmin):
 @admin.register(StudentProfile)
 class StudentAdmin(admin.ModelAdmin):
     autocomplete_fields = ['user', 'course', 'department']
-    list_display = ['first_name', 'level', 'course_title', 'department']
+    list_display = ['first_name', 'level', 'courses', 'department']
     list_editable = ['department']
     list_select_related = ['user']
 
     @admin.display(description='Courses')
-    def course_title(self, obj):
-        return ", ".join([obj.course.title for obj in obj.enrollments.all()])
+    def courses(self, obj):
+        return ", ".join([enrollment.course.title for enrollment in obj.enrollments.all()])

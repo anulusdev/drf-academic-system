@@ -16,7 +16,6 @@ class StudentViewSet(ModelViewSet):
     search_fields = ['level', 'course__title', 'department__name']
     ordering_fields = ['id', 'level']
     permission_classes = [IsOwnerOrReadOnly]
-    # queryset = StudentProfile.objects.all()
     serializer_class = StudentSerializer
 
     def get_queryset(self):
@@ -27,12 +26,11 @@ class StudentViewSet(ModelViewSet):
         if not user.role:
             raise PermissionDenied("Make sure you have a role")
 
-        if user.role == 'Student':
+        if user.is_student:
             return StudentProfile.objects.filter(user=user).select_related('department')
-        if user.role == 'Lecturer':
-            current_user = user.lecturerprofile
-            his_department = current_user.department
-            return StudentProfile.objects.filter(department=his_department)\
+        if user.is_lecturer:
+            current_user = user.lectur
+            return StudentProfile.objects.filter(department=current_user.department)\
                 .select_related('department')
 
     @action(detail=True)
@@ -56,8 +54,8 @@ class LecturerViewSet(ModelViewSet):
         if not user.role:
             raise PermissionDenied("Make sure you have a role")
 
-        if user.is_authenticated and user.role == 'Lecturer':
-            current_user = user.lecturerprofile
+        if user.is_authenticated and user.is_lecturer:
+            current_user = user.profile
 
             is_hod = department.objects.filter(hod=current_user).exists()
             if is_hod:
@@ -66,5 +64,5 @@ class LecturerViewSet(ModelViewSet):
                     .select_related('department')
             return LecturerProfile.objects.filter(user=user) \
                 .select_related('department')
-        if user.role == 'Student':
+        if user.is_student:
             raise PermissionDenied("You do not have permission to view lecturer profiles.")
