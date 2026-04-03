@@ -14,6 +14,7 @@ from .serializers import (
     DepartmentSerializer, DepartmentCreateSerializer
 )
 
+
 class CourseViewSet(ModelViewSet):
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['code', 'unit', 'department__name', 'lecturer__user__first_name']
@@ -23,7 +24,7 @@ class CourseViewSet(ModelViewSet):
     def get_permissions(self):
         user = self.request.user
 
-        if user.is_authenticated and user.role == 'Lecturer':
+        if user.is_authenticated and user.is_lecturer:
             return [IsHodOrReadOnly()]
         return [IsAdminOrReadOnly()]
 
@@ -33,7 +34,7 @@ class CourseViewSet(ModelViewSet):
         lecturer = user.lecturerprofile
         course = self.get_object()
 
-        if user.role != 'Lecturer':
+        if not user.is_lecturer:
             return Response(
                 {'detail': 'Only User with Lecturer Profile can allocate courses'},
                 status=status.HTTP_403_FORBIDDEN
@@ -60,7 +61,7 @@ class CourseViewSet(ModelViewSet):
     @action(detail=True, permission_classes=[IsStudent, IsAuthenticated])
     def enroll(self, request, pk=None):
         user = request.user
-        if user.role != 'Student':
+        if not user.is_student:
             return Response(
                 {'detail': 'Only User with Student Profile can enroll'},
                 status=status.HTTP_403_FORBIDDEN
@@ -112,6 +113,6 @@ class DepartmentViewSet(ModelViewSet):
     def get_permissions(self):
         user = self.request.user
 
-        if user.is_authenticated and user.role == 'Lecturer':
+        if user.is_authenticated and user.lecturer:
             return [IsHodOrReadOnly()]
         return [IsAdminOrReadOnly()]

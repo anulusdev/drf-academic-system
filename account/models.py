@@ -1,17 +1,39 @@
 from django.conf import settings
 from django.contrib import admin
-from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db import models
+
+
+class UserRole(models.TextChoices):
+    LECTURER = 'Lecturer', 'lecturer_role'
+    STUDENT = 'Student', 'student_role'
 
 
 class CustomUser(AbstractUser):
-    class Role(models.TextChoices):
-        LECTURER = 'Lecturer', 'lecturer_role'
-        STUDENT = 'Student', 'student_role'
-
     username = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
-    role = models.CharField(max_length=20, choices=Role.choices)
+    role = models.CharField(
+        max_length=20, 
+        choices=UserRole.choices, 
+        default=UserRole.STUDENT
+    )
+
+    @property
+    def is_lecturer(self):
+        return self.role == UserRole.LECTURER
+
+    @property
+    def is_student(self):
+        return self.role == UserRole.STUDENT
+
+    @property
+    def profile(self):
+        """Automatically returns the correct profile based on role"""
+        if self.is_lecturer:
+            return getattr(self, 'lecturerprofile')
+        if self.is_student:
+            return getattr(self, 'studentprofile')
+        return None
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
