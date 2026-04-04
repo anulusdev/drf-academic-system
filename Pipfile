@@ -10,6 +10,7 @@ django-filter = "*"
 djoser = "*"
 django-debug-toolbar = "*"
 psycopg2 = "*"
+drf-spectacular = "*"
 
 [dev-packages]
 

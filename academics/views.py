@@ -113,6 +113,6 @@ class DepartmentViewSet(ModelViewSet):
     def get_permissions(self):
         user = self.request.user
 
-        if user.is_authenticated and user.lecturer:
+        if user.is_authenticated and user.is_lecturer:
             return [IsHodOrReadOnly()]
         return [IsAdminOrReadOnly()]

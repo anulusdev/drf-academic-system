@@ -1,7 +1,8 @@
 from django.conf import settings
 from django.contrib import admin
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, PermissionsMixin
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class UserRole(models.TextChoices):
@@ -9,7 +10,7 @@ class UserRole(models.TextChoices):
     STUDENT = 'Student', 'student_role'
 
 
-class CustomUser(AbstractUser):
+class CustomUser(AbstractUser, PermissionsMixin):
     username = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
     role = models.CharField(
@@ -44,13 +45,17 @@ class CustomUser(AbstractUser):
 
 class StudentProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    session = models.ForeignKey('academics.AcademicSession', on_delete=models.DO_NOTHING, null=True)
+    session = models.ForeignKey(
+        'academics.AcademicSession', 
+        on_delete=models.DO_NOTHING, null=True
+    )
     level = models.IntegerField(null=True, blank=True)
 
     department = models.ForeignKey(
         'academics.Department', null=True,
         blank=True, on_delete=models.CASCADE
     )
+    is_active = models.BooleanField(_("active"), default=True)
 
     def __str__(self):
         return f'{self.user.first_name} {self.user.last_name}'
@@ -65,11 +70,12 @@ class StudentProfile(models.Model):
 
 
 class LecturerProfile(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     department = models.ForeignKey(
         'academics.Department', null=True,
         blank=True, on_delete=models.SET_NULL
     )
+    is_active = models.BooleanField(_("active"), default=True)
 
     def __str__(self):
         return f'{self.user.first_name} {self.user.last_name}'

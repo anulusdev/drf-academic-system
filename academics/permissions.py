@@ -42,7 +42,7 @@ class IsStudent(permissions.BasePermission):
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated and
-            request.user.role == 'Student' and
+            request.user.is_student and
             hasattr(request.user, 'studentprofile')
         )
 

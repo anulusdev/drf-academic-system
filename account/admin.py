@@ -23,9 +23,9 @@ class AdminUser(UserAdmin):
 @admin.register(LecturerProfile)
 class LecturerAdmin(admin.ModelAdmin):
     autocomplete_fields = ['user', 'department']
-    list_display = ['first_name', 'last_name', 'department']
+    list_display = ['first_name', 'last_name', 'department', 'is_active']
     list_editable = ['department']
-    list_filter = ['department']
+    list_filter = ['is_active', 'department']
     list_select_related = ['user']
     search_fields = ['department']
 
@@ -33,8 +33,9 @@ class LecturerAdmin(admin.ModelAdmin):
 @admin.register(StudentProfile)
 class StudentAdmin(admin.ModelAdmin):
     autocomplete_fields = ['user', 'course', 'department']
-    list_display = ['first_name', 'level', 'courses', 'department']
+    list_display = ['first_name', 'level', 'courses', 'department', 'is_active']
     list_editable = ['department']
+    list_filter = ['is_active', 'department']
     list_select_related = ['user']
 
     @admin.display(description='Courses')
