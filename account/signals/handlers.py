@@ -16,7 +16,10 @@ def capture_old_role(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def sync_profile_on_save(sender, created, instance, **kwargs):
+def sync_profile_on_save(sender, created, instance, update_fields, **kwargs):
+    if update_fields is not None and update_fields == frozenset({'last_login'}):
+        return
+
     if created:
         if instance.is_student:
             StudentProfile.objects.get_or_create(user=instance)
@@ -24,9 +27,10 @@ def sync_profile_on_save(sender, created, instance, **kwargs):
             LecturerProfile.objects.get_or_create(user=instance)
         return
 
-        old_role = getattr(instance, '_old_role', None)
-        if old_role == instance.role:
-            return
+    old_role = getattr(instance, '_old_role', None)
+
+    if old_role == instance.role:
+        return
 
     handle_profile_transition(instance, old_role)
 
@@ -40,3 +44,4 @@ def handle_profile_transition(user, old_role):
         elif user.is_lecturer:
             StudentProfile.objects.filter(user=user).update(is_active=False)
             LecturerProfile.objects.get_or_create(user=user)
+

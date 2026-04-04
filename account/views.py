@@ -27,10 +27,10 @@ class StudentViewSet(ModelViewSet):
             raise PermissionDenied("Make sure you have a role")
 
         if user.is_student:
-            return StudentProfile.objects.filter(user=user).select_related('department')
+            return StudentProfile.objects.filter(user=user, is_active=True).select_related('department')
         if user.is_lecturer:
-            current_user = user.lectur
-            return StudentProfile.objects.filter(department=current_user.department)\
+            current_user = user.lecturerprofile
+            return StudentProfile.objects.filter(department=current_user.department, is_active=True)\
                 .select_related('department')
 
     @action(detail=True)
@@ -60,9 +60,9 @@ class LecturerViewSet(ModelViewSet):
             is_hod = department.objects.filter(hod=current_user).exists()
             if is_hod:
                 hod_department = current_user.department
-                return LecturerProfile.objects.filter(department=hod_department)\
+                return LecturerProfile.objects.filter(department=hod_department, is_active=True)\
                     .select_related('department')
-            return LecturerProfile.objects.filter(user=user) \
+            return LecturerProfile.objects.filter(is_active=True) \
                 .select_related('department')
         if user.is_student:
             raise PermissionDenied("You do not have permission to view lecturer profiles.")
