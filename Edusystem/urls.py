@@ -16,12 +16,39 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework.permissions import AllowAny
+from rest_framework.settings import api_settings
+from drf_spectacular.openapi import AutoSchema
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
 import debug_toolbar
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+
+if not isinstance(api_settings.DEFAULT_SCHEMA_CLASS, type) or \
+   api_settings.DEFAULT_SCHEMA_CLASS.__module__ != 'drf_spectacular.openapi':
+    api_settings.DEFAULT_SCHEMA_CLASS = AutoSchema
+
+
+class SchemaView(SpectacularAPIView):
+    schema = None
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+
+class SwaggerView(SpectacularSwaggerView):
+    schema = None
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path('auth/', include('djoser.urls')),
+    # path('', SwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    # path('schema/', SchemaView.as_view(), name='schema'),
+    path('admin/', admin.site.urls),
     path('academics/', include('academics.urls')),
     path('account/', include('account.urls')),
     path('auth/', include('djoser.urls.jwt')),
