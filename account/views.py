@@ -1,5 +1,4 @@
 from django.apps import apps
-# from django.shortcuts import render
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -9,6 +8,7 @@ from rest_framework.viewsets import ModelViewSet
 from .models import LecturerProfile, StudentProfile
 from .permissions import IsOwnerOrReadOnly
 from .serializers import LecturerSerializer, StudentSerializer
+from .services import UserService
 
 
 class StudentViewSet(ModelViewSet):
@@ -33,6 +33,12 @@ class StudentViewSet(ModelViewSet):
             return StudentProfile.objects.filter(department=current_user.department, is_active=True)\
                 .select_related('department')
 
+    def perform_update(self, serializer):
+        user = serializer.save()
+
+        if 'role' in serializer.validated_data:
+            UserService.switch_user_role(user)
+            
     @action(detail=True)
     def me(self, request):
         student = get_object_or_404(StudentProfile, user=request.user)
@@ -43,6 +49,12 @@ class StudentViewSet(ModelViewSet):
 class LecturerViewSet(ModelViewSet):
     permission_classes = [IsOwnerOrReadOnly]
     serializer_class = LecturerSerializer
+
+    def perform_update(self, serializer):
+        user = serializer.save()
+
+        if 'role' in serializer.validated_data:
+            UserService.switch_user_role(user)    
 
     def get_queryset(self):
         user = self.request.user
