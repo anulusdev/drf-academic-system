@@ -34,8 +34,8 @@ class StudentViewSet(ModelViewSet):
                 .select_related('department')
 
     @action(detail=True)
-    def me(self):
-        student = StudentProfile.objects.filter(pk=self.request.user_id)
+    def me(self, request):
+        student = get_object_or_404(StudentProfile, user=request.user)
         serializer = StudentSerializer(student)
         return Response(serializer.data)
 
@@ -66,3 +66,5 @@ class LecturerViewSet(ModelViewSet):
                 .select_related('department')
         if user.is_student:
             raise PermissionDenied("You do not have permission to view lecturer profiles.")
+
+        return LecturerProfile.objects.filter(is_active=True).select_related('department')

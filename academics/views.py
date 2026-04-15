@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from .models import Course, Department, Enrollment
-from .permissions import IsAdminOrReadOnly, IsHodOrReadOnly, IsStudent
+from .permissions import IsAdminOrReadOnly, IsHodOrReadOnly, IsStudent, IsLecturer
 from .serializers import (
     CourseSerializer, CourseCreateSerializer, 
     DepartmentSerializer, DepartmentCreateSerializer
@@ -28,7 +28,7 @@ class CourseViewSet(ModelViewSet):
             return [IsHodOrReadOnly()]
         return [IsAdminOrReadOnly()]
 
-    @action(detail=True, permission_classes=[IsAuthenticated])
+    @action(detail=True, permission_classes=[IsAuthenticated, IsLecturer])
     def allocate(self, request, pk=None):
         user = request.user
         lecturer = user.lecturerprofile
@@ -58,14 +58,9 @@ class CourseViewSet(ModelViewSet):
             "assigned_to": f"{lecturer.user.first_name} {lecturer.user.last_name}"
         })
 
-    @action(detail=True, permission_classes=[IsStudent, IsAuthenticated])
+    @action(detail=True, methods = ['post'], permission_classes=[IsStudent, IsAuthenticated])
     def enroll(self, request, pk=None):
         user = request.user
-        if not user.is_student:
-            return Response(
-                {'detail': 'Only User with Student Profile can enroll'},
-                status=status.HTTP_403_FORBIDDEN
-            )
         student = user.studentprofile
         course = self.get_object()
 
