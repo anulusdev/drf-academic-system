@@ -19,11 +19,13 @@ class CourseViewSet(ModelViewSet):
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['code', 'unit', 'department__name', 'lecturer__user__first_name']
     ordering_fields = ['id', 'unit', ]
-    queryset = Course.objects.all().select_related('department')
+    queryset = Course.objects.all().select_related('department').order_by('id')
 
     def get_permissions(self):
-        user = self.request.user
+        if self.action in ['enroll', 'allocate']:
+            return super().get_permissions()
 
+        user = self.request.user
         if user.is_authenticated and user.is_lecturer:
             return [IsHodOrReadOnly()]
         return [IsAdminOrReadOnly()]
