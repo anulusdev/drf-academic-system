@@ -4,126 +4,367 @@
 ![Django](https://img.shields.io/badge/Django-5.0+-green?style=for-the-badge&logo=django)
 ![DRF](https://img.shields.io/badge/DRF-Latest-red?style=for-the-badge)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=for-the-badge&logo=postgresql)
+![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker)
+![pytest](https://img.shields.io/badge/Tests-pytest-orange?style=for-the-badge&logo=pytest)
 
-**Edusystem** is a comprehensive backend API designed to digitize and streamline core academic operations for higher education institutions.
+**Edusystem** is a production-grade backend REST API that digitizes and centralizes the core academic operations of a higher education institution from user registration and role management to course allocation, student enrollment, and departmental oversight.
 
-While many school management systems struggle with data fragmentation and administrative bottlenecks, Edusystem provides a centralized, scalable architecture to manage the entire academic lifecycle—from student admission and course enrollment to departmental oversight and session management.
-
----
-
-## 🎯 The Problem & Solution Edusystem Provides
-
-### Real-World Challenges
-Universities and colleges often face significant operational inefficiencies:
-1.  **Fragmented Data:** Student records, course registrations, and results are often disconnected, leading to errors.
-2.  **Administrative Bottlenecks:** Manual course registration and verification processes slow down the academic calendar.
-3.  **Lack of Historical Context:** Difficulty in distinguishing between current active records and historical data from previous academic sessions.
-4.  **Complex Access Needs:** Distinguishing between what a Student, a Lecturer, and a Head of Department (HOD) should see requires complex logic that basic tools fail to handle.
-
-### The Edusystem Solution
-Edusystem solves these problems by providing:
-* **Automated Enrollment Flow:** A structured system for course registration that links students, courses, and academic sessions efficiently.
-* **Session-Scoped Data:** Built-in management for `AcademicSession` (e.g., 2024/2025), ensuring that historical records remain intact while operations focus on the current term.
-* **Hierarchical Data Integrity:** Ensures that a Department HOD has oversight over their department's data, while Lecturers retain control over their specific courses.
-* **Scalable Architecture:** Built to handle the complex relationships between thousands of students, hundreds of courses, and shifting faculty roles.
+Built as a personal project to go beyond tutorial-level Django and confront real engineering decisions: schema design under constraint, role-based access control enforced at the database layer, atomic state transitions, and a tested, containerized codebase.
 
 ---
 
-## ⚙️ Implementation & Architecture Decisions
+## The Problem
 
-This project follows a **Domain-Driven Design (DDD)** approach to ensure scalability and maintainability. Below are the key architectural decisions:
+Nigerian universities and higher education institutions broadly manage academic operations through fragmented, manual processes:
 
-### 1. Decoupled Authentication & Profiling (Separation of Concerns)
-Instead of overloading the default Django `User` model, we strictly separate **Authentication** from **Domain Logic**.
-* **`CustomUser` (Auth):** Handles only login credentials (email, password, staff status).
-* **`StudentProfile` / `LecturerProfile` (Domain):** Stores academic data (Department, Level, Faculty ID).
-* **Why?** This prevents "God Models" and allows a single user to theoretically hold multiple roles (e.g., a Staff member who is also a Student) without schema conflicts.
+- Course registration happens on paper or through disconnected portals
+- Student records, enrollment statuses, and results live in separate systems with no integrity guarantees
+- Access control is enforced at the frontend only the backend does not know or care who is calling it
+- Role distinctions between Students, Lecturers, and Heads of Department are handled informally
 
-### 2. Explicit Junction Tables (The Enrollment Model)
-We intentionally avoided Django's standard Many-to-Many field for Course Registration. Instead, we utilized an explicit **`Enrollment`** model.
-* **Why?** A simple M2M link cannot store critical metadata such as:
-    * *When* the student registered.
-    * *Which* Academic Session the course belongs to (e.g., 2023 vs 2024).
-    * *Status* of the course (Registered, Approved, Failed, Passed).
-
-### 3. Session-Scoped Data Architecture
-To solve the problem of historical data integrity, the system relies on an **`AcademicSession`** model.
-* **Design:** All enrollment and academic records are tied to a specific session.
-* **Benefit:** This allows the system to remain "active" for the current year while preserving immutable records of previous years, preventing data loss during year transitions.
-
-### 4. Two-Layer Security Implementation (RBAC)
-Security is enforced at both the Database and Application levels:
-* **Layer 1: Queryset Scoping:** Overridden `get_queryset()` methods ensure that users never fetch data outside their permission scope (e.g., A student querying `/results/` receives only *their* results—filtering happens at the SQL level).
-* **Layer 2: Object Permissions:** Custom permission classes (e.g., `IsHodOrReadOnly`, `IsOwner`) act as a final gatekeeper to prevent unauthorized modifications.
-
-### Database Schema
-Below is the architectural overview of the database relationships:
-
-![Alt text](https://github.com/anulusdev/drf-academic-system/blob/a14cf8028fff31bb7cc3643dadd81fc74255bc59/DB%20schema%20file.png)
+Edusystem is a backend API designed to replace those gaps with a system where institutional rules are enforced at the data layer not just at the interface level.
 
 ---
 
-## 🛠 Tech Stack
+## What It Does
 
-- **Language:** Python 3.12+
-- **Framework:** Django & Django Rest Framework (DRF)
-- **Database:** PostgreSQL
-- **Authentication:** JWT (JSON Web Tokens) via `djoser`
-- **Utilities:** `django-filter`, `psycopg2`
+- **Role-aware user registration** — users register as Students or Lecturers; the correct domain profile is created automatically via a post-save signal calling an explicit service layer
+- **Departmental structure** — Departments have a designated Head of Department (HOD) with scoped write access over their department's data
+- **Course management** — Lecturers can self-allocate to courses within their department; HODs manage course creation and updates
+- **Student enrollment** — Students can enroll in courses within their department through a structured approval workflow with status tracking (Pending → Approved/Rejected)
+- **Two-layer RBAC** — data access is filtered at the SQL level via `get_queryset()` overrides, then gated at the object level via custom permission classes
+- **Role transitions** — a user's role can switch between Student and Lecturer; the old profile is soft-deleted and a new one is created atomically
 
 ---
 
-## 📂 Project Structure
+## Architecture Decisions
 
-```text
-edusystem/
-├── account/                 # User Identity & Profile Management
-│   ├── models.py            # CustomUser, StudentProfile, LecturerProfile
-│   ├── permissions.py       # Profile-based permissions
-│   └── views.py             # Auth endpoints
-│
-├── academics/               # Academic Operations
-│   ├── models.py            # Department, Course, Enrollment, AcademicSession
-│   ├── permissions.py       # Object-level permissions (Course ownership, HOD rights)
-│   └── views.py             # Academic CRUD operations
-│
-└── config/                  # Settings & URL Routing
+### 1. Decoupled Authentication and Domain Identity
+
+The default Django `User` model handles credentials only — email, password, role flag. Domain-specific data lives in separate `StudentProfile` and `LecturerProfile` models, each linked to `CustomUser` via a `OneToOneField` with `CASCADE` deletion.
+
+```
+CustomUser          →  credentials, role
+StudentProfile      →  department, level, session, enrollment history
+LecturerProfile     →  department, allocated courses
 ```
 
-## 🚀 Installation & Setup
+This separation prevents god-model anti-patterns. A `profile` property on `CustomUser` dynamically returns the correct profile based on the user's current role, giving views a single unified interface regardless of user type.
+
+### 2. Explicit Junction Table for Enrollment
+
+Django's built-in `ManyToManyField` was intentionally avoided for course registration. Instead, an explicit `Enrollment` model is used as the through table.
+
+**Why?** A plain M2M link cannot carry the metadata that real academic enrollment requires:
+
+| Field | Purpose |
+|---|---|
+| `status` | Tracks Pending / Approved / Rejected state |
+| `approved_by` | FK to the user who approved — creates an audit trail |
+| `approved_at` | Timestamp of approval |
+
+A `UniqueConstraint` on `(student, course)` enforces idempotency at the database level — a student cannot enroll in the same course twice, even under concurrent requests.
+
+### 3. Service Layer for Role Transitions
+
+Complex business logic that touches multiple models is handled in `account/services.py` via an explicit `UserService` class — not in signals, not in views.
+
+**Why not signals?** Signals are invisible — they fire on every model save regardless of context, are hard to debug, and make tests unreliable. Moving this logic into an explicit service makes it findable, traceable, and independently testable. The signal layer is kept minimal: it only handles new user creation by delegating to the same service.
+
+### 4. Two-Layer RBAC
+
+Security is enforced at two distinct points in the request lifecycle:
+
+**Layer 1 — Queryset Scoping (SQL level)**
+
+`get_queryset()` is overridden in each ViewSet to filter the dataset before it ever reaches serialization:
+
+**Layer 2 — Object-Level Permissions (application level)**
+
+Custom permission classes act as the final gatekeeper before any mutation:
+
+| Permission Class | Behaviour |
+|---|---|
+| `IsAdminOrReadOnly` | Read: anyone. Write: staff only |
+| `IsHodOrReadOnly` | Read: anyone. Write: HOD of the relevant department only |
+| `IsStudent` | Access: authenticated users with a StudentProfile only |
+| `IsLecturer` | Access: authenticated users with a LecturerProfile only |
+| `IsOwnerOrReadOnly` | Read: anyone in scope. Write: the profile owner only |
+
+`IsHodOrReadOnly` uses `hasattr` to handle both `Department` objects (checking `obj.hod`) and `Course` objects (checking `obj.department.hod`) with a single permission class — polymorphic permission logic.
+
+
+### 5. Containerization with Docker
+
+The entire application runs in Docker with `docker-compose`. The PostgreSQL service includes a health check — the Django container does not start until the database is confirmed ready:
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+```
+
+All secrets are managed via environment variables — no credentials are hardcoded.
+
+---
+
+## Database Schema
+
+![DB Schema](https://github.com/anulusdev/drf-academic-system/blob/a14cf8028fff31bb7cc3643dadd81fc74255bc59/DB%20schema%20file.png)
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3.12+ |
+| Framework | Django 5.0+, Django REST Framework |
+| Database | PostgreSQL 16 |
+| Authentication | JWT via `djoser` + `djangorestframework-simplejwt` |
+| API Docs | `drf-spectacular` (Swagger UI + ReDoc) |
+| Containerization | Docker, docker-compose |
+| Testing | `pytest`, `pytest-django` |
+| Filtering | `django-filter` |
+| Dev Tools | `django-debug-toolbar`, Pipenv |
+
+---
+
+## Project Structure
+
+```
+drf-academic-system/
+│
+├── account/                        # User identity and profile management
+│   ├── models.py                   # CustomUser, StudentProfile, LecturerProfile
+│   ├── serializers.py              # User creation and profile serializers
+│   ├── views.py                    # StudentViewSet, LecturerViewSet
+│   ├── permissions.py              # IsOwnerOrReadOnly
+│   ├── services.py                 # UserService — role transition business logic
+│   ├── tests.py                    # Profile creation, queryset scoping, permission tests
+│   └── signals/
+│       └── handlers.py             # Minimal signal — delegates to UserService
+│
+├── academics/                      # Academic domain operations
+│   ├── models.py                   # Department, Course, Enrollment, AcademicSession
+│   ├── serializers.py              # Course and Department serializers
+│   ├── views.py                    # CourseViewSet (enroll, allocate), DepartmentViewSet
+│   ├── permissions.py              # IsAdminOrReadOnly, IsHodOrReadOnly, IsStudent, IsLecturer
+│   └── tests.py                    # RBAC, enrollment logic, service layer tests
+│
+├── common/
+│   └── seriliazers.py              # Shared serializers to resolve circular imports
+│
+├── Edusystem/                      # Project configuration
+│   ├── settings.py                 # Main settings
+│   ├── settings_test.py            # Test-specific settings (local DB host override)
+│   └── urls.py                     # Root URL config including Swagger UI
+│
+├── conftest.py                     # Shared pytest fixtures (users, clients, api_client)
+├── pytest.ini                      # pytest configuration
+├── docker-compose.yaml             # Multi-service container setup
+├── Dockerfile                      # Application container definition
+└── Pipfile                         # Dependency management
+```
+
+---
+
+## Testing
+
+The test suite uses `pytest` and `pytest-django` and covers three layers:
+
+**RBAC and Permission Tests**
+- Unauthenticated users can browse courses (intentional — read-only public access)
+- Students cannot create or modify courses
+- Admins can create courses
+- Lecturers are blocked from enrolling in courses
+
+**Enrollment Business Logic**
+- Students can enroll in courses within their department
+- Duplicate enrollment is rejected at the application layer (backed by a `UniqueConstraint` at the database layer)
+- Students cannot enroll in courses outside their department
+- Lecturers cannot enroll in courses
+
+**Service Layer Tests**
+- Role switching creates the correct new profile
+- The old profile is soft-deleted (`is_active=False`), not destroyed
+- New user registration auto-creates the correct profile type
+
+**Account and Queryset Scoping Tests**
+- A student querying `/account/students/` receives only their own profile
+- A lecturer receives only students in their department
+- Anonymous users are denied access
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest -v
+
+# Run a specific test file
+pytest academics/tests.py -v
+
+# Run a specific test class
+pytest account/tests.py::TestProfileAutoCreation -v
+
+# Stop at first failure
+pytest -x -v
+```
+
+> Tests run against a local PostgreSQL instance using `Edusystem/settings_test.py`,
+> which overrides only the database host. Docker is not required to run the test suite locally.
+
+---
+
+## Installation & Setup
+
 ### Prerequisites
-  - Python 3.12+
 
-  - PostgreSQL
+- Python 3.12+
+- PostgreSQL 16
+- Docker & docker-compose (optional but recommended)
+- Pipenv
 
-  - Pipenv (recommended) or pip
+### Option A — Run with Docker (Recommended)
 
-### Steps
-  1. Clone the repository
-  ```bash
-    git clone [https://github.com/anulusdev/drf-academic-system.git]
-    cd drf-academic-system
-  ```
+```bash
+# 1. Clone the repository
+git clone https://github.com/anulusdev/drf-academic-system.git
+cd drf-academic-system
 
-  2. Install Dependencies
-     ```bash
-     pipenv install
-     pipenv shell
-     ```
-     
-  3. Run Migrations
-     ```bash
-     python manage.py makemigrations
-     python manage.py migrate
-     ```
-     
-  4. Create Superuser
-     ```bash
-       python manage.py createsuperuser
-     ```
-     
-  5. Start Server
-     ```bash
-       python manage.py runserver
-     ```
-     
+# 2. Create a .env file in the project root
+cp .env.example .env
+# Edit .env with your credentials
+
+# 3. Start the containers
+docker-compose up --build
+
+# 4. The API is available at http://localhost:8000
+# Swagger UI is at http://localhost:8000/
+```
+
+### Option B — Run Locally
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/anulusdev/drf-academic-system.git
+cd drf-academic-system
+
+# 2. Install dependencies
+pipenv install
+pipenv shell
+
+# 3. Set environment variables (or create a .env file)
+export SECRET_KEY=your-secret-key
+export DB_NAME=Edusystem
+export DB_USER=postgres
+export DB_PASSWORD=yourpassword
+export DB_HOST=localhost
+export DB_PORT=5432
+
+# 4. Apply migrations
+python manage.py migrate
+
+# 5. Create a superuser
+python manage.py createsuperuser
+
+# 6. Start the development server
+python manage.py runserver
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `SECRET_KEY` | Django secret key | Required |
+| `DB_NAME` | PostgreSQL database name | `Edusystem` |
+| `DB_USER` | PostgreSQL username | `postgres` |
+| `DB_PASSWORD` | PostgreSQL password | Required |
+| `DB_HOST` | Database host | `localhost` |
+| `DB_PORT` | Database port | `5432` |
+| `ALLOWED_HOSTS` | Comma-separated allowed hosts | `localhost` |
+
+---
+
+## API Documentation
+
+Once the server is running, interactive API documentation is available at:
+
+| Interface | URL |
+|---|---|
+| Swagger UI | `http://localhost:8000/` |
+| ReDoc | `http://localhost:8000/redoc/` |
+| Raw Schema | `http://localhost:8000/schema/` |
+
+---
+
+## Authentication
+
+Edusystem uses JWT authentication via `djoser` and `djangorestframework-simplejwt`.
+
+```bash
+# Register a new user
+POST /auth/users/
+
+# Obtain a JWT token
+POST /auth/jwt/create/
+{
+  "email": "user@example.com",
+  "password": "yourpassword"
+}
+
+# Include the token in subsequent requests
+Authorization: JWT <your_access_token>
+```
+
+---
+
+## Key Endpoints
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/academics/courses/` | Anyone | List all courses |
+| `POST` | `/academics/courses/` | Admin only | Create a course |
+| `POST` | `/academics/courses/{id}/enroll/` | Students only | Enroll in a course |
+| `POST` | `/academics/courses/{id}/allocate/` | Lecturers only | Self-allocate to a course |
+| `GET` | `/academics/department/` | Anyone | List all departments |
+| `POST` | `/academics/department/` | Admin / HOD | Create a department |
+| `GET` | `/account/students/` | Authenticated | Scoped by role |
+| `GET` | `/account/lecturers/` | Authenticated | Scoped by role |
+| `POST` | `/auth/users/` | Anyone | Register a new user |
+| `POST` | `/auth/jwt/create/` | Anyone | Obtain JWT token |
+
+---
+
+## Planned Extensions
+
+These are tracked improvements not yet implemented in the current version:
+
+- **Session-scoped enrollment** — link `Enrollment` directly to an `AcademicSession` so records are scoped by academic year, allowing historical data to remain intact across year transitions
+- **Enrollment approval endpoint** — an explicit action for HODs/Lecturers to approve or reject pending enrollments (the `status` and `approved_by` fields on `Enrollment` already support this workflow)
+- **CI/CD pipeline** — GitHub Actions workflow for automated test runs on every pull request
+- **Production deployment** — Railway or Render deployment with environment-based settings switching
+
+---
+
+## Contributing
+
+Contributions, issues, and pull requests are welcome.
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Write tests for your changes
+4. Ensure all tests pass: `pytest -v`
+5. Submit a pull request with a clear description of what changed and why
+
+---
+
+## Author
+
+**Alhazan Khaleed Semilore**
+Software Engineering Student — Federal University of Technology, Akure (FUTA)
+
+- GitHub: [@anulusdev](https://github.com/anulusdev)
+- Email: khaleedsemilore@gmail.com
