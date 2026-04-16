@@ -46,11 +46,12 @@ class SwaggerView(SpectacularSwaggerView):
 
 
 urlpatterns = [
-    # path('', SwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    # path('schema/', SchemaView.as_view(), name='schema'),
+    path('', SwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('schema/', SchemaView.as_view(), name='schema'),
     path('admin/', admin.site.urls),
     path('academics/', include('academics.urls')),
     path('account/', include('account.urls')),
+    path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
     path('__debug__/', include('debug_toolbar.urls')),
 ]

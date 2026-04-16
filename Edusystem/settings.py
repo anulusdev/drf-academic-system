@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
@@ -152,23 +152,23 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    # 'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
 
-# SPECTACULAR_SETTINGS = {
-#     'TITLE': 'Edusystem Academic API',
-#     'DESCRIPTION': (
-#         'A comprehensive backend API for managing academic operations '
-#         'including student enrollment, course management, grading, '
-#         'and faculty oversight.'
-#     ),
-#     'VERSION': '1.0.0',
-#     'SERVE_INCLUDE_SCHEMA': False,
-#     'SECURITY': [{'jwtAuth': []}],
-# }
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Edusystem Academic API',
+    'DESCRIPTION': (
+        '''A comprehensive backend API for managing academic operations 
+        including student enrollment, course management, grading,
+        and faculty oversight.'''
+    ),
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY': [{'jwtAuth': []}],
+}
 
 DJOSER = {
     'SERIALIZERS': {

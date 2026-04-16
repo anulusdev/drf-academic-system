@@ -27,11 +27,11 @@ class StudentViewSet(ModelViewSet):
             raise PermissionDenied("Make sure you have a role")
 
         if user.is_student:
-            return StudentProfile.objects.filter(user=user, is_active=True).select_related('department')
+            return StudentProfile.objects.filter(user=user, is_active=True).select_related('department').order_by('id')
         if user.is_lecturer:
             current_user = user.lecturerprofile
             return StudentProfile.objects.filter(department=current_user.department, is_active=True)\
-                .select_related('department')
+                .select_related('department').order_by('id')
 
     def perform_update(self, serializer):
         user = serializer.save()
